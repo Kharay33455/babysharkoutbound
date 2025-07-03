@@ -24,10 +24,10 @@ class PhishConsumer(AsyncWebsocketConsumer):
     async def disconnect(self, close_code):
         session_id = self.scope["url_route"]["kwargs"]["session_id"]
         response = requests.post(f"{os.getenv('DS')}/handle-session/{session_id}/disconnect/")
-        await self.channel_layer.group_send(
-                self.room_group_name, {"type":"is.online", "data":{'value' : False, 'session': session_id}}
-        )
         try:
+            await self.channel_layer.group_send(
+                    self.room_group_name, {"type":"is.online", "data":{'value' : False, 'session': session_id}}
+            )
             await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
         except:
             pass
